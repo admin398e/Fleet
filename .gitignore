@@ -1,0 +1,35 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# env files (keep .env.example)
+.env
+.env.*
+!.env.example
+
+# supabase local
+.branches
+.temp
+
+# misc
+.DS_Store
+*.pem
+/coverage
+/playwright-report
+/test-results
+/.vercel
+*.tsbuildinfo
+next-env.d.ts
+
+# PWA generated service worker
+/public/sw.js
+/public/sw.js.map
+/public/swe-worker-*.js
