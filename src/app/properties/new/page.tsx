@@ -1,9 +1,12 @@
+import { redirect } from "next/navigation";
+import { isSupabaseConfigured } from "@/lib/env";
 import { AppHeader } from "@/components/AppHeader";
 import { PropertyForm } from "@/components/property/PropertyForm";
 
 export const metadata = { title: "Add property" };
 
 export default function NewPropertyPage() {
+  if (!isSupabaseConfigured()) redirect("/try");
   return (
     <>
       <AppHeader />

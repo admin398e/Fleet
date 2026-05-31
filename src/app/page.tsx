@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import { AppHeader } from "@/components/AppHeader";
 import { PropertySearch } from "@/components/property/PropertySearch";
@@ -9,6 +11,9 @@ export default async function HomePage({
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
+  // Demo mode (no Supabase): the only usable surface is the standalone test.
+  if (!isSupabaseConfigured()) redirect("/try");
+
   const { q } = await searchParams;
   const supabase = await createClient();
 

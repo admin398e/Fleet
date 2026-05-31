@@ -1,9 +1,13 @@
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
+import { isSupabaseConfigured } from "@/lib/env";
 import { LoginForm } from "@/components/auth/LoginForm";
 
 export const metadata = { title: "Sign in" };
 
 export default function LoginPage() {
+  // No accounts in demo mode — send people to the standalone test.
+  if (!isSupabaseConfigured()) redirect("/try");
   return (
     <main className="flex flex-1 flex-col justify-center gap-8 p-6">
       <header className="text-center">

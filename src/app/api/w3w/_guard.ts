@@ -1,8 +1,10 @@
 import "server-only";
 
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/rate-limit";
+import { isSupabaseConfigured } from "@/lib/env";
 
 interface GuardOptions {
   /** Logical bucket name, e.g. "convert" or "autosuggest". */
@@ -22,20 +24,34 @@ type GuardFailure = { ok: false; response: NextResponse };
 export async function guardW3WRequest(
   opts: GuardOptions,
 ): Promise<GuardSuccess | GuardFailure> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Identity for auth + rate limiting. With Supabase configured we require a
+  // signed-in user; in demo mode (no Supabase) we allow the request and rate
+  // limit by client IP so the proxy still can't be hammered.
+  let identity: string;
 
-  if (!user) {
-    return {
-      ok: false,
-      response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
-    };
+  if (isSupabaseConfigured()) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return {
+        ok: false,
+        response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+      };
+    }
+    identity = user.id;
+  } else {
+    const hdrs = await headers();
+    const ip =
+      hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      hdrs.get("x-real-ip") ||
+      "demo";
+    identity = `ip:${ip}`;
   }
 
   const limit = rateLimit(
-    `w3w:${opts.bucket}:${user.id}`,
+    `w3w:${opts.bucket}:${identity}`,
     opts.capacity,
     opts.refillPerSec,
   );
@@ -54,5 +70,5 @@ export async function guardW3WRequest(
     };
   }
 
-  return { ok: true, userId: user.id };
+  return { ok: true, userId: identity };
 }

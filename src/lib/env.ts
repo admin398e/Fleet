@@ -7,9 +7,12 @@
  */
 import { z } from "zod";
 
+// Supabase is OPTIONAL: when its env vars are absent the app runs in "demo
+// mode" — the no-login /try page that needs only the what3words key. When the
+// vars are present, full auth + the shared address book are enabled.
 const publicSchema = z.object({
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url().optional(),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1).optional(),
   NEXT_PUBLIC_NAV_PROVIDER: z.enum(["google", "copilot"]).default("google"),
 });
 
@@ -29,6 +32,14 @@ export const publicEnv = publicSchema.parse({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   NEXT_PUBLIC_NAV_PROVIDER: process.env.NEXT_PUBLIC_NAV_PROVIDER,
 });
+
+/** True when Supabase auth + database are configured (full app, not demo). */
+export function isSupabaseConfigured(): boolean {
+  return (
+    !!publicEnv.NEXT_PUBLIC_SUPABASE_URL &&
+    !!publicEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
+}
 
 /**
  * Parse and return server-only env. Call this lazily inside server code

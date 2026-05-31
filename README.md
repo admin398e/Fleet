@@ -49,7 +49,22 @@ supabase/migrations/        Schema, RLS policies, storage bucket
 tests/                      vitest unit tests + Playwright e2e
 ```
 
-## Getting started
+## Quick test today (what3words + Maps only, no backend)
+
+You don't need Supabase to try the core loop. Set **only** the what3words key and
+the app runs in **demo mode** — a no-login page at **`/try`**:
+
+1. Deploy to Vercel (or run locally), setting one env var: `W3W_API_KEY`.
+2. Open the site on your iPhone — it lands on `/try`.
+3. Tap **📍 Use my current location** → it resolves the what3words address for
+   where you're standing → tap **Navigate** to open Google Maps to that exact 3 m
+   square. You can also type/look up any `word.word.word` address.
+
+> Demo mode = anything that needs an account redirects to `/try`; the what3words
+> key still stays server-side. Add the two Supabase vars later to unlock accounts
+> and the shared address book — no code change.
+
+## Getting started (full app)
 
 ### 1. Create a Supabase project
 1. Create a project at [supabase.com](https://supabase.com).

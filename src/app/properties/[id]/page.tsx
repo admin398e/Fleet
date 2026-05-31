@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import { AppHeader } from "@/components/AppHeader";
 import { PinSection } from "@/components/pins/PinSection";
@@ -9,6 +10,8 @@ export default async function PropertyPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  if (!isSupabaseConfigured()) redirect("/try");
+
   const { id } = await params;
   const supabase = await createClient();
 
