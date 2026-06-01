@@ -32,8 +32,10 @@ drop in behind feature flags with **zero UI changes**:
 - `MicroliseAdapter` — `getTodaysJourney()`, `submitProofOfDelivery()`
 - `StubMicroliseAdapter` — safe no-op until credentials exist
 - `NavigationAdapter` — Google Maps today, CoPilot deep-link stub for later
-- `registry.ts` — selects real vs stub via `MICROLISE_ENABLED` /
-  `NEXT_PUBLIC_NAV_PROVIDER`
+- `ComplianceAdapter` (TruTac/TruLinks, **to add**) — `getDriverHours()`,
+  `getWalkaroundStatus()`, `getDefects()`
+- `registry.ts` — selects real vs stub via feature flags /
+  per-tenant credentials (see §7)
 
 The whole plan below slots into this seam.
 
@@ -153,14 +155,74 @@ it doesn't. Confirm expiry/age-out.
 
 ---
 
-## 6. Cross-cutting: offline & PWA ⬜
+## 6. Workstream D — TruTac / TruLinks compliance layer
+
+> TruTac is a UK transport **compliance** platform. **TruLinks** is its
+> self-service **API suite** (developer portal at `trulinks.co.uk`, where an
+> operator registers and **generates their own API key**). It exposes verified
+> **tachograph / driver-hours** data, **TruChecks** walkaround checks &
+> defects, and **TruLocation** tracking. TruTac is deliberately
+> *telematics-agnostic* and already partners with Microlise + ~30 others — so
+> it sits **alongside** Microlise and us, it doesn't compete.
+
+### D1. `TruTacComplianceAdapter` ⬜
+- `getDriverHours(driverId)` — remaining driving/duty/WTD time.
+- `getWalkaroundStatus(vehicleId)` — today's TruChecks pass/fail + open items.
+- `getDefects(vehicleId)` — logged defects (incl. height/weight restrictions).
+- Auth via a **tenant-supplied TruLinks API key** (see §7), not our own creds.
+- `StubComplianceAdapter` fallback for demo.
+
+### D2. Driver-hours-aware routing ⬜
+- Feed remaining hours into the routing/ETA engine: flag *"route exceeds
+  remaining legal driving time by N min"* and factor required breaks into ETAs.
+- Turns the saved-minutes metric (B4) into a **WTD/compliance** story, not just
+  convenience — a strong operator selling point.
+
+### D3. Walkaround gate ⬜
+- Before "Today's Journey" (§3) can start, surface TruChecks status: vehicle
+  unchecked / open defect → warn the driver and log it.
+
+### D4. Defects ↔ hazards / profiles ⬜
+- A TruTac vehicle defect or a height/weight restriction maps into the same
+  constraint model as Workstream C, feeding hazard-avoidance and the Vehicle
+  Profile checks.
+
+**Test:** with a stub key, journey screen shows driver-hours remaining + a
+walkaround badge; a route longer than remaining hours raises the warning;
+swapping in a real tenant key pulls live values.
+
+---
+
+## 7. Cross-cutting: "bring your own API key" (per-tenant credentials) ⬜
+
+The single most important integration decision. Because TruLinks (and many
+telematics/TMS vendors) issue **self-service API keys**, we let each operator
+**bring their own keys** rather than us holding global partner creds.
+
+- **Settings → Integrations** screen: operator pastes their TruTac/TruLinks key,
+  Microlise client id/secret, etc.
+- Stored **encrypted, per tenant** in Supabase (e.g. Vault / column encryption),
+  never shipped to the client; server-side only.
+- `registry.ts` resolves the right adapter (real vs stub) **per tenant** from
+  stored credentials + feature flags.
+- **Why it matters:**
+  1. **Removes the commercial blocker** — the operator authorises us with
+     *their own* account, so we can run against real data **without our own
+     partner NDA**.
+  2. True **multi-tenant SaaS** isolation — every operator's keys are scoped to
+     their tenant.
+  3. Self-serve onboarding — a new customer is live as soon as they paste keys.
+
+---
+
+## 8. Cross-cutting: offline & PWA ⬜
 - App is already an installable PWA (serwist). Add **background-sync queues**
   for ePOD submissions and hazard reports so in-cab use survives signal gaps,
   then flush when back online (mirrors Microlise's queue services).
 
 ---
 
-## 7. Routing-engine decision (the real unlock) ⬜
+## 9. Routing-engine decision (the real unlock) ⬜
 
 - **Now (MVP/demo):** public OSRM *driving* — no truck costing, no avoidance.
   Fine for the Waitrose demo.
@@ -175,16 +237,19 @@ it doesn't. Confirm expiry/age-out.
 
 ---
 
-## 8. Security & commercial gating
-- Per-driver auth via Supabase (already scaffolded); Microlise creds via env +
-  OAuth client-credentials, never client-side.
-- **Blocker:** real Microlise Journey/ePOD API access requires **Waitrose
-  sponsorship + a Microlise partner agreement (NDA)**. Everything above runs on
-  mock/imported data until then.
+## 10. Security & commercial gating
+- Per-driver auth via Supabase (already scaffolded); all third-party creds held
+  server-side, encrypted per tenant (§7), never client-side.
+- **Microlise:** Journey/ePOD API still needs the operator's Microlise API
+  access — but under the **bring-your-own-key** model (§7) the *operator*
+  supplies it, so we no longer need our own partner NDA to run on real data.
+- **TruTac/TruLinks:** operator self-registers at `trulinks.co.uk` and pastes
+  their key — no agreement required on our side.
+- Until keys are supplied, everything runs on mock/imported data.
 
 ---
 
-## 9. Phased delivery
+## 11. Phased delivery
 
 | Phase | Deliverable | Engine | Data |
 |------|-------------|--------|------|
@@ -192,15 +257,16 @@ it doesn't. Confirm expiry/age-out.
 | 1 | Microlise demo: mock journey + ePOD + manifest import | OSRM | A1–A6 |
 | 2 | Deviation reroute + faster-route prompt + saved-minutes | OSRM | B1,B2,B4 |
 | 3 | Hazard reporting + sharing + map display | OSRM | C1–C3 |
-| 4 | Self-host Valhalla → profile-aware + hazard-avoidance + learned deviations | Valhalla | B3,C4 |
-| 5 | Real Microlise API wiring | — | A2 live |
+| 4 | Bring-your-own-key Settings + TruTac compliance (hours/walkaround/defects) | OSRM | D1–D4, §7 |
+| 5 | Self-host Valhalla → profile-aware + hazard-avoidance + learned deviations + hours-aware routing | Valhalla | B3,C4,D2 |
+| 6 | Live keys wired (Microlise + TruTac) per tenant | — | A2 live |
 
-Phases 1–3 are demo-able with no Microlise credentials — enough to put in
-front of a Waitrose buyer. Phase 4 is the genuine product moat. Phase 5 flips
-on when access is granted.
+Phases 1–3 are demo-able with no external credentials — enough to put in front
+of a Waitrose buyer. Phase 4 makes it real multi-tenant SaaS and unlocks
+compliance. Phase 5 is the genuine routing moat.
 
 ---
 
-## 10. Immediate next build step
+## 12. Immediate next build step
 Phase 1 (Microlise demo on mock data) is the highest-leverage thing to build
-next and needs nothing from Microlise. Ready to start there on this branch.
+next and needs nothing external. Ready to start there on this branch.
