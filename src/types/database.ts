@@ -6,6 +6,7 @@
  */
 
 export type PinType = "door" | "parking";
+export type IntegrationProvider = "trutac" | "microlise";
 
 export interface Database {
   public: {
@@ -108,6 +109,27 @@ export interface Database {
         Update: { storage_path?: string };
         Relationships: [];
       };
+      integration_credentials: {
+        Row: {
+          user_id: string;
+          provider: IntegrationProvider;
+          config: Record<string, string> | null;
+          secret_cipher: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          user_id?: string;
+          provider: IntegrationProvider;
+          config?: Record<string, string> | null;
+          secret_cipher?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          config?: Record<string, string> | null;
+          secret_cipher?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       pins_with_confirmations: {
@@ -127,7 +149,7 @@ export interface Database {
       };
     };
     Functions: Record<string, never>;
-    Enums: { pin_type: PinType };
+    Enums: { pin_type: PinType; integration_provider: IntegrationProvider };
     CompositeTypes: Record<string, never>;
   };
 }

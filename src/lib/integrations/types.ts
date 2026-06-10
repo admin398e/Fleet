@@ -36,3 +36,55 @@ export interface NavigationAdapter {
   /** Open the navigation target (client-side; uses window.location). */
   launch(dest: NavDestination): void;
 }
+
+// ── Compliance (TruTac / TruLinks) ──────────────────────────────────────────
+
+/** Remaining legal driving/duty time for a driver (drivers' hours / WTD). */
+export interface DriverHours {
+  driverId: string;
+  remainingDriveMinutes: number;
+  remainingDutyMinutes: number;
+  nextBreakDueAt?: string; // ISO timestamp
+  asOf: string; // ISO timestamp
+}
+
+export type WalkaroundResult = "pass" | "fail" | "not_done";
+
+/** Daily walkaround (TruChecks) status, gating a journey start. */
+export interface WalkaroundStatus {
+  vehicleId: string;
+  result: WalkaroundResult;
+  completedAt?: string; // ISO timestamp
+  openDefectCount: number;
+}
+
+export type DefectSeverity = "minor" | "major" | "dangerous";
+
+/** A dimensional limit a defect implies — feeds the hazard/profile model. */
+export interface VehicleRestriction {
+  kind: "height" | "weight" | "width";
+  value: number;
+  unit: "m" | "t";
+}
+
+export interface Defect {
+  id: string;
+  vehicleId: string;
+  category: string;
+  description: string;
+  severity: DefectSeverity;
+  reportedAt: string; // ISO timestamp
+  restriction?: VehicleRestriction;
+}
+
+/**
+ * Compliance data source (TruTac/TruLinks). Authenticated with the operator's
+ * own API key (bring-your-own-key); a stub is used until a key is supplied.
+ */
+export interface ComplianceAdapter {
+  readonly name: string;
+  isEnabled(): boolean;
+  getDriverHours(driverId: string): Promise<DriverHours | null>;
+  getWalkaroundStatus(vehicleId: string): Promise<WalkaroundStatus | null>;
+  getDefects(vehicleId: string): Promise<Defect[]>;
+}

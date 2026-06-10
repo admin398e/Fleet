@@ -22,6 +22,9 @@ const serverSchema = z.object({
     .string()
     .optional()
     .transform((v) => v === "true"),
+  // At-rest encryption key for stored integration secrets (32 bytes, hex or
+  // base64). Optional so demo mode still boots; required only to save keys.
+  INTEGRATION_ENCRYPTION_KEY: z.string().min(1).optional(),
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
 });
@@ -52,6 +55,7 @@ export function getServerEnv() {
   cachedServerEnv = serverSchema.parse({
     W3W_API_KEY: process.env.W3W_API_KEY,
     MICROLISE_ENABLED: process.env.MICROLISE_ENABLED,
+    INTEGRATION_ENCRYPTION_KEY: process.env.INTEGRATION_ENCRYPTION_KEY,
     UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
     UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
   });

@@ -1,8 +1,15 @@
 import { publicEnv } from "@/lib/env";
-import type { MicroliseAdapter, NavigationAdapter } from "./types";
+import type {
+  ComplianceAdapter,
+  MicroliseAdapter,
+  NavigationAdapter,
+} from "./types";
+import type { ProviderCredentials } from "./credentials";
 import { GoogleMapsNavigationAdapter } from "./trimble/GoogleMapsNavigationAdapter";
 import { StubCoPilotNavigationAdapter } from "./trimble/StubCoPilotNavigationAdapter";
 import { StubMicroliseAdapter } from "./microlise/StubMicroliseAdapter";
+import { TruTacComplianceAdapter } from "./trutac/TruTacComplianceAdapter";
+import { StubComplianceAdapter } from "./trutac/StubComplianceAdapter";
 
 /**
  * Adapter selection by feature flag. Call sites depend only on the interfaces,
@@ -22,4 +29,21 @@ export function getNavigationAdapter(): NavigationAdapter {
 export function getMicroliseAdapter(): MicroliseAdapter {
   // When a real adapter exists, branch on getServerEnv().MICROLISE_ENABLED here.
   return new StubMicroliseAdapter();
+}
+
+/**
+ * Compliance adapter (TruTac/TruLinks). Returns the real adapter when the
+ * operator has supplied their own API key (bring-your-own-key), otherwise a
+ * stub. Credentials are resolved server-side (see integrations/server.ts).
+ */
+export function getComplianceAdapter(
+  creds: ProviderCredentials | null,
+): ComplianceAdapter {
+  if (creds?.apiKey) {
+    return new TruTacComplianceAdapter({
+      apiKey: creds.apiKey,
+      baseUrl: creds.baseUrl,
+    });
+  }
+  return new StubComplianceAdapter();
 }

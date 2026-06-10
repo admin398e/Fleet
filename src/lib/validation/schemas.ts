@@ -46,5 +46,18 @@ export const createNoteSchema = z.object({
   body: z.string().trim().min(1).max(1000),
 });
 
+export const integrationProviderSchema = z.enum(["trutac", "microlise"]);
+
+/** Save form for bring-your-own-key integration credentials. */
+export const saveIntegrationSchema = z.object({
+  provider: integrationProviderSchema,
+  // Optional so an operator can update baseUrl/clientId without re-entering the
+  // secret; the action only overwrites the stored secret when this is present.
+  apiKey: z.string().trim().min(8).max(512).optional(),
+  baseUrl: z.string().trim().url().max(200).optional(),
+  clientId: z.string().trim().min(1).max(200).optional(),
+});
+
 export type CreatePinInput = z.infer<typeof createPinSchema>;
 export type CreateAddressInput = z.infer<typeof createAddressSchema>;
+export type SaveIntegrationInput = z.infer<typeof saveIntegrationSchema>;
